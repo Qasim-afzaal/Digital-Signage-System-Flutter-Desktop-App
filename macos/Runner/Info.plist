@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIconFile</key>
+    <string></string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>$(PRODUCT_COPYRIGHT)</string>
+    
+    <!-- Location Permission Description -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Your message to users about why you need their location</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Your message to users about why you need their location</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>We need access to control the system settings.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app needs access to your microphone.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs access to your camera.</string>
+    <key>NSBrightnessControlUsageDescription</key>
+    <string>This app needs access to control your display brightness.</string>
+
+    <!-- WebView Permissions and Settings -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+    <key>NSJavaScriptExecutionPermission</key>
+    <true/>
+
+    <!-- UI Settings -->
+    <key>NSMainNibFile</key>
+    <string>MainMenu</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>
