@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>e-Ink Low Density v3.04</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    {{ __loadsdk__ }}
+    {{ __meta__('description', 'This app provides real time departure information for up to Four Departures in a single instance.') }}
+    {{ __meta__('aspectratio', '1650x465, 1650x930, 1650x1395, 1650x1860') }}
+    
+    {{
+        __datasink__(name='OverwriteInfo', label='Choose Data Feed:', help='This App Data Source with 6 Text Columns at least.', fields=[
+            __field__(name='Route_Id', type='text', label='Route Id'),
+            __field__(name='Txt_Display', type='text', label='Text to Display', optional=true),
+            __field__(name='Overwrite_Route_Id', type='text', label='Overwrite Route Id', optional=true),
+            __field__(name='Overwrite_ShortName', type='text', label='Overwrite ShortName', optional=true),
+            __field__(name='Overwrite_LongName', type='text', label='Overwrite LongName', optional=true),
+            __field__(name='Overwrite_Destination', type='text', label='Overwrite Destination', optional=true),
+            __field__(name='Overwrite_Route_Color', type='text', label='Overwrite Route Color', optional=true),
+            __field__(name='Overwrite_Route_Txt_Color', type='text', label='Overwrite Route Text Color', optional=true),
+        ], optional=true)
+    }}
+
+    {{ __config__('ApiFormat', type='choice', label='API Structure', choices=(
+      ('1', '1'),
+      ('2', '2')
+    ))}}    
+    
+    {{ __config__('BaseUrlStop', type='text', label='Stop Api URL', value='https://api.mpmedia.tv/extAPI/demoapi/departures.php?stopId=1', help='The url of stop departures') }}
+    {{ __config__('UsePlayerId', type='bool', label='Use Stop No. (Player Name)', help='If checked then App will extract stop no. from player name (numberic digit after - S)', optional=true) }}
+    {{ __config__('BaseUrlRoute', type='text', label='Routes Api URL', value='https://api.mpmedia.tv/extAPI/demoapi/routes.php', help='The url of route details', optional=true) }}
+
+    {{ __config__('DisplayRoutes', type='text', label='Display Routes', help='Route ids should be in the format of CSV i.e. 1,2,3,4', optional=true) }}
+    {{ __config__('UsePlayerTag', type='bool', label='Use Route Numbers (Player Tags)', value="1", help='If checked then App will extract route no. from player tags (R1,R2) otherwise App will use (Display Routes) input field', optional=true) }}
+    
+    {% if UsePlayerTag == False and DisplayRoutes == "" %}
+        {% error "Enter Route Numbers in (Display Routes) Field"%}
+    {% endif %}
+
+    {{ __config__('AppStyle', type='choice', label='Style', choices=(
+      ('1', '1'),
+      ('2', '2'),
+      ('3', '3'),
+      ('4', '4'),
+      ('5', '5')
+    ))}}
+
+    {{ __config__('TripTimeDisplay', type='choice', label='Display Time', choices=(
+      ('Estimated', 'Estimated'),
+      ('Schedule', 'Schedule'),
+    ))}}
+
+    {{ __config__('TripType', type='choice', label='Display', choices=(
+      ('Arrival', 'Arrivals'),
+      ('Depart', 'Departures')
+    ))}}
+
+    {{ __config__('SortBySelect', type='choice', label='Sort Route By', choices=(
+        ('RouteId', 'RouteId'),
+        ('Time', 'Time'),
+        ('None', 'None'),
+    ))}}
+
+    {{ __config__('showBorder', type='bool', label='Show Borders', value='1') }}
+    {{ __config__('routeImgs', type='media', label='Choose your Route Images(3)', help='If the data includes direction, the file naming convention should be R+RouteNo+_+(I|O)+_+(L|D), e.g., R1_O_L. If there is no direction, the file naming convention should be R+RouteNo+_(L|D), e.g., R16_L. Here, I stands for Inbound, O for Outbound, L for Light mode, and D for Dark mode. ', optional=true) }}
+
+    {{ __config__('desCharcters', type='number', label='Display Max Characters of Destination', value='30') }}
+    
+    {{ __config__('dataRefresh', type='number', label='Data Refresh Cycle (in seconds)', optional="true", value='15', help='The interval (in seconds) for updating data') }}
+    {{ __config__('ThreSoon', type='number', label='Threshold Soon (in minutes)', value='2', help='The threshold value to display Soon (in minutes)') }}
+    {{ __config__('FontSize', type='number', label='Route No. (font size)', value='15', help='Route font size', optional=true) }}
+
+    {% if ThreSoon < 1 %}
+    {% error "Number of (Threshold Soon (in minutes)) value to display Soon is below minimum limit of 1."%}
+    {% endif %}
+
+    {{ __config__('FontWeight', type='text', label='Font Weight (CSV)', value='Regular, SemiBold, Regular, SemiBold, Light)', help='The format for font weight will be (RouteNo, RouteLongName, Destination, TimeTop, TimeBottom) and app support - (Bold, Semi-Bold, Regular, Light)', optional=true) }}
+
+    {{ __config__('StopRefresh', type='number', label='Stop Refresh Interval (in minutes)', value='5', help='The interval (in minutes) for the next bus information to be updated.[RouteId, InternetServiceDesc, DirectionCode, ETA, STA, ETD, STD]') }}
+    
+    {{ __config__('RouteRefresh', type='number', label='Route Refresh Interval (in hours)', value='3', help='The interval (in hours) for the next bus information to be updated.[ShortName, LongName, Color, TextColor]') }}
+
+    {{ __config__('FallBack', type='image', label='FallBack Image', help='The image dimensions should be same like selected zone hight and width') }}
+
+    {{ __config__('Debug', type='bool', label='Debug', value='0') }}
+
+
+    <style type="text/css" media="screen">
+        @font-face {
+            font-family: 'Open Sans';
+            src: url("{{ media['fonts/OpenSans-ExtraBold.woff'].url }}") format('woff');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Open Sans';
+            src: url("{{ media['fonts/OpenSans-SemiBold.woff'].url }}") format('woff');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Open Sans';
+            src: url("{{ media['fonts/OpenSans-Bold.woff'].url }}") format('woff');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Open Sans';
+            src: url("{{ media['fonts/OpenSans-Light.woff'].url }}") format('woff');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Open Sans';
+            src: url("{{ media['fonts/OpenSans-Regular.woff'].url }}") format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            font-family: 'Open Sans';
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+
+        .head {
+            padding: 2vh;
+        }
+
+        .wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 28.1vw;
+            border-bottom: .2vw solid #cdcdcd;
+        }
+
+        .wrapper .digit {
+            width: 25%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .wrapper .name {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding-left: 1vw;
+        }
+
+        .wrapper .time {
+            width: 25%;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding-left: 1vw;
+        }
+
+        .wrapper .digit span {
+            font-size: {{ FontSize }}em;
+            background: black;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1vw;
+        }
+
+        .wrapper .name span:nth-child(1) {
+            font-weight: bold;
+            font-size: 5vw;
+        }
+
+        .wrapper .name span:nth-child(2) {
+            text-transform: uppercase;
+            font-size: 3.96vw;
+            font-weight: 600;
+        }
+
+        .wrapper .timeA {
+            font-weight: bold;
+            font-size: 6.1vw;
+            text-align: center;
+        }
+
+        .wrapper.info .timeA {
+            font-weight: bold;
+            font-size: 4.5vw;
+            text-align: center;
+        }
+
+        .wrapper .time .internalTime span {
+            font-size: 3.5vw;
+            width: 50%;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .wrapper .time .internalTime span:nth-child(1) {
+            border-right: .2vw solid #cdcdcd;
+        }
+
+        .internalTime {
+            display: flex;
+            width: 100%;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .alert {
+            position: relative;
+            padding: .75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: .25rem;
+        }
+
+        .d-none {
+            display: none !important;
+        }
+
+        .fallback img {
+            position: absolute;
+            width: 100%;
+            height: auto;
+            z-index: 2;
+        }
+
+        .temp_two .timeAndStop {
+            width: 75%;
+        }
+        
+        .temp_two .digitName {
+            display: flex;
+            flex-direction: row;
+        }
+        
+        .temp_two.wrapper .digit {
+            width: 30% !important;
+        }
+        
+        .temp_two.wrapper .name {
+            width: 70%;
+        }
+        
+        .temp_two.wrapper .digit span {
+            background: transparent;
+            color: black;
+            font-weight: 800;
+        }
+        
+        .temp_two .stopName {
+            font-size: 5vw;
+            padding-left: 1vw;
+        }
+        
+        .temp_two.wrapper .name span:nth-child(1) {
+            font-weight: 600;
+        }
+        
+        .temp_two.wrapper .timeA .timeInMin {
+            font-size: 12vw;
+        }
+
+        .wrapper_3 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 25vh;
+        }
+
+        .head-temp3 {
+            height: 98vh;
+            /* padding: 0.7% !important; */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .box_properties {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 0%;
+        }
+
+        .temp_four .timeAndStop {
+            width: 55%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .temp_four .digitName {
+            display: flex;
+            flex-direction: row;
+            height: 50%;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+        .temp_four .digit {
+            width: auto;
+            position: relative;
+            font-size: {{ FontSize }}em;
+            font-weight: 700;
+            bottom: 20%;
+            padding-left: 2%;
+        }
+
+        .temp_four .name {
+            width: auto;
+            justify-content: flex-start;
+            padding-left: 2vw;
+            font-size: 4.6em;
+            font-weight: bold;
+        }
+
+        .temp_four.wrapper .digit span {
+            background: transparent;
+            color: black;
+            font-weight: 800;
+            font-size: 20vw !important;
+            margin: 0vw;
+        }
+
+        .temp_four .stopName {
+            font-size: 3.5em;
+            padding-left: 1.5vw;
+            padding-bottom: 2%;
+            width: auto;
+            height: 50%;
+            display: flex;
+            align-items: flex-end;
+            font-weight: 700;
+        }
+
+        .temp_four .time {
+            width: 45%;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .temp_four .timeA {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15em;
+        }
+
+        .temp_four .timeInMin {
+            line-height: 1;
+        }
+
+        .temp_four .mins {
+            font-size: 0.7em !important;
+        }
+
+        .temp_four .internalTime {
+            height: 20%;
+            display: flex;
+            width: 100% !important;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .temp_four .internalTime span:nth-child(1) {
+            border-right: 0vw solid #cdcdcd00 !important;
+            font-size: 5.5em !important;
+            text-align: center !important;
+            line-height: 0 !important;
+            font-weight: 700;
+            width: 40%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .temp_four .time-status {
+            display: flex;
+            width: auto;
+        }
+
+        .temp_four .time-status span:nth-child(1) {
+            font-size: 5.5em !important;
+            width: 70%;
+            text-align: center !important;
+            line-height: 0 !important;
+            font-weight: 700;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .temp_four .internalTime span:nth-child(2) {
+            font-size: 4.5em !important;
+            width: auto;
+            font-weight: 700;
+            display: flex;
+            line-height: 0.1;
+            justify-content: flex-start;
+            padding-right: 5%;
+        }
+
+        .temp_five {
+            margin-top: 2%;
+            margin-left: 1.15%;
+            margin-right: 1.5%;
+        }
+
+        .temp_five .timeAndStop {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .temp_five .digitName {
+            display: flex;
+            flex-direction: row;
+            height: 25%;
+            justify-content: flex-start;
+        }
+
+        .temp_five .digit {
+            width: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-left: 1%;
+        }
+
+        .temp_five .digit span {
+            width: auto;
+            position: relative;
+            bottom: 9%;
+            padding-left: 2.5%;
+            background-color: transparent;
+            color: black;
+            font-weight: 700 !important;
+            display: block;
+            margin: 0;
+            font-size: {{ FontSize }}em;
+        }
+
+        .temp_five .name {
+            width: auto;
+            padding-left: 2vw;
+            padding-top: 3%;
+            font-size: 3em;
+            font-weight: 700;
+            margin-bottom: 4%;
+            margin-right: 1%;
+        }
+
+        .temp_five .stopName {
+            font-size: 3.5em;
+            padding-bottom: 2%;
+            width: auto;
+            height: 25%;
+            display: flex;
+            align-items: flex-end;
+            font-weight: 700;
+            justify-content: center;
+        }
+
+        .temp_five .time {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            height: 50%;
+            padding-left: 0%;
+        }
+
+        .temp_five .timeA {
+            font-weight: 700;
+            font-size: 20em;
+        }
+
+        .temp_five .mins {
+            font-size: 0.45em !important;
+        }
+
+        .top {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .mid {
+            width: 89%;
+            height: 100%;
+        }
+
+        .time-sec div {
+            width: 32.5%;
+            text-align: center;
+        }
+
+        .route-img {
+            text-align: center;
+            width: 100%;
+            height: 65%;
+        }
+
+        .route-img img {
+            width: 100%;
+        }
+
+        .time-sec {
+            display: flex;
+            width: 100%;
+            height: 35%;
+            font-size: 6em;
+            font-weight: 600;
+        }
+
+        .time-span {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+        }
+
+        .time-span sub {
+            font-size: 0.5em;
+        }
+
+        .time2 {
+            font-size: 0.8em;
+            padding-top: 0.29em;
+        }
+
+        .loader {
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            position: absolute;
+        }
+
+        .not_found {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .not_found span {
+            background-color: red;
+            font-size: 3vw;
+            padding: 5px;
+            color: white;
+            margin: 5px;
+        }
+
+        #debug {
+            position: absolute;
+            color: red;
+            width: 100%;
+            height: 1080px;
+            font-size: 2.5em;
+            font-weight: 500;
+            z-index: 9999999;
+        }
+    </style>
+</head>
+
+<body>
+    {% if Debug %}
+        <div id="debug"></div>
+    {% endif %}
+    <div class="loader"></div>
+    {% if FallBack %}
+        <div class="fallback d-none">
+            <img src="{{ FallBack.url }}">
+        </div>
+    {% endif %}
+    <div class="alert-push"></div>
+    <div class="head"></div>
+    <div class="not_found"></div>
+
+    <!--Jquery Lib-->
+    <script type="text/javascript" src='{{ media["js/jquery.js"].url }}'></script>
+    <script type="text/javascript" src='{{ media["js/momentmin.js"].url }}'></script>
+
+    <!--Tim JS-->
+    <script type="text/javascript" src='{{ media["js/timmin.js"].url }}'></script>
+
+    <!--Template-->
+    <script type="text/tim" class="app-temp-1">
+        <div style="height: [[height]]vh" class="wrapper [[Info]]">
+            <div class="digit">
+                <span>[[RouteId]]</span>
+            </div>
+            <div class="name">
+                <span>[[LongName]]</span>
+                <span class="[[DesHide]]">[[Des]]</span>
+            </div>
+            <div class="time">
+                <span class="timeA">[[TimeSec.TimeA]]</span>
+                <div class="internalTime [[TimeSec.hide]]">
+                    <span>[[TimeSec.TimeB]]</span>
+                    <span>[[TimeSec.TimeC]]</span>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/tim" class="app-temp-2">
+        <div class="wrapper [[Info]] temp_two">
+            <div class="timeAndStop">
+                <div class="digitName">
+                    <div class="digit">
+                        <span>[[RouteId]]</span>
+                    </div>
+                    <div class="name">
+                        <span>[[LongName]]</span>
+                    </div>
+                </div>
+                <div class="stopName">
+                    <span class="[[DesHide]]">[[Des]]</span>
+                </div>
+            </div>
+            <div class="time">
+                <span class="timeA">[[TimeSec.TimeA]]</span>
+                <div class="internalTime [[TimeSec.hide]]">
+                    <span>[[TimeSec.TimeB]]</span>
+                    <span>[[TimeSec.TimeC]]</span>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/tim" class="app-temp-3">
+        <div style="height: [[temp3_height]]vh; padding-top: [[padding]]%" class="wrapper_3 temp_3">
+            <div class="top">
+                <div class='mid'>
+                    <div class="route-img">
+                        <img id="image" src="[[ routeImg ]]" alt="">
+                    </div>
+                    <div class='time-sec'>
+                        <div class='space'></div>
+                        <div class='time1'>
+                            <span class='time-span'>[[ TimeSec.TimeA ]]</span>
+                        </div>
+                        <div class='time2'>
+                            <span class='time-span'>[[ TimeSec.TimeB ]]</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/tim" class="app-temp-4">
+        <div style="height: [[height]]vh; width: [[width]]%; border: [[wholeborder]]em solid black; margin-bottom: [[margin]]%;" class="wrapper [[Info]] temp_four">
+            <div class="timeAndStop">
+                <div class="digitName">
+                    <span class="digit">[[RouteId]]</span>
+                    <span class="name">[[LongName]]</span>
+                </div>
+                <div class="stopName">
+                    <span class="[[DesHide]]">[[Des]]</span>
+                </div>
+            </div>
+            <div class="time">
+                <span class="timeA">[[TimeSec.TimeA]]</span>
+                <div class="internalTime [[TimeSec.hide]]">
+                    <span>Next</span>
+                    <div class="time-status">
+                        <span>[[TimeSec.TimeB]]</span>
+                        <span>m</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/tim" class="app-temp-5">
+        <div style="height: [[height]]vh; width: [[width]]%; border: [[wholeborder]]em solid black;" class="wrapper [[Info]] temp_five">
+            <div class="timeAndStop">
+                <div class="digitName">
+                    <div class="digit">
+                        <span>[[RouteId]]</span>
+                    </div>
+                    <span class="name">[[LongName]]</span>
+                </div>
+                <div class="time">
+                    <span class="timeA">[[TimeSec.TimeA]]</span>
+                </div>
+                <div class="stopName">
+                    <span class="[[DesHide]]">[[Des]]</span>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script>
+        var routeImg = {};
+        var emptyGroup = [];
+
+        {% if routeImgs %}
+            {% for routeImg in routeImgs %}
+                routeImg['{{routeImg.name.split(".")[0]}}'] = '{{ routeImg.url }}';
+            {% endfor %}
+        {% endif %}
+
+        var config = {
+            apiStruc: {{ ApiFormat }},
+            style: {{ AppStyle }},
+            stopDepApi: '{{ BaseUrlStop }}',
+            stopId: '',
+            routeApi: '{{ BaseUrlRoute }}',
+            usePlayerId: ('{{ UsePlayerId }}' === 'True'),
+            tripType: '{{ TripType }}', //Arrival - Depart
+            tripTimeDisply: '{{ TripTimeDisplay }}', //Estimated - Schedule
+            routeNo: [],
+            splitRoute: [],
+            showBorder: ('{{ showBorder }}' === 'True'),
+            desMaxCharcters: {{ desCharcters }},
+            fontWeight: ('{{ FontWeight }}').split(','), // Bold, Semi-Bold, Regular, Light (Route no, Route name, Destination, Time top, Time bottom)
+            sortRoute: '{{ SortBySelect }}', // Time - RouteId - None
+            threSoon: {{ ThreSoon }},
+            dataRefresh: {{ dataRefresh }},
+            stopRefresh: {{ StopRefresh }},
+            routeRefresh: {{ RouteRefresh }},
+            usePlayerTag: ('{{ UsePlayerTag }}' === 'True'),
+            disRoutes: '{{ DisplayRoutes }}',
+            dataFeed: []
+        }
+
+        var font = {
+            Bold: 900,
+            SemiBold: 700,
+            Regular: 500,
+            Light: 300
+        }
+
+        // If true then App will extract Stop no from player name
+        if (config.usePlayerId) {
+            var splitUrl = '';
+            try { var player = JSON.parse(signage.playbackInfo()).player.name } catch (e) { var player = 'Unknown' };
+            if (config.apiStruc == 1) {
+                splitUrl = config.stopDepApi.split(/\/(?=[^\/]+$)/)[0] + '/';
+            } else {
+                splitUrl = config.stopDepApi.split('=')[0] + '=';
+            }
+            player = player.split('- S')[1];
+            config.stopDepApi = splitUrl + player;
+        }
+
+        // Extract Route No. from tags
+        if (config.usePlayerTag) {
+            try { var tag = JSON.parse(signage.playbackInfo()).player.tags } catch (e) { var tag = [] };
+            tag = tag.filter(function (item, index) { return item.indexOf('R') == 0; })
+            config.routeNo = tag.map(function (x) { return x.replace(/R/g, ''); })
+        } else {
+            config.routeNo = config.disRoutes.replace(/\s/g, '').split(',');
+        }
+
+        {% if Debug %}
+            $('#debug').html(" ");
+            $('#debug').html('<div>' + config.routeNo + 's->' + JSON.stringify(tag) + '--' + JSON.stringify(config.routeNo) + '</div>');
+        {% endif %}
+
+        var localStr = {
+            stopDepStor: config.stopDepApi + '_schedule_feed_e_ink',
+            routeStor: config.stopDepApi + '_route_info_e_ink',
+        }
+
+        function routeData() {
+            var scheduleTrip, allRoutes = [];
+
+            if (config.apiStruc == '1') {
+                scheduleTrip = getDataFromStorage(localStr.stopDepStor);
+                allRoutes = getDataFromStorage(localStr.routeStor);
+            } else {
+                scheduleTrip = getDataFromStorage(localStr.stopDepStor);
+            }
+            debugger
+
+            if ((config.apiStruc == '1') ? scheduleTrip && allRoutes : scheduleTrip) {
+                if (config.apiStruc == '1') {
+                    data = generateTripList(scheduleTrip, allRoutes);
+                } else {
+                    debugger
+                    data = generateInfo2(scheduleTrip, allRoutes);
+                }
+
+                if (data.length > 0) {
+                    $('.fallback').addClass('d-none');
+                    $('.head, .not_found').html('');
+
+                    $.each(data, function (index, info) {
+                        var overwriteObj = overwriteBy(info.RouteId);
+
+                        var timeSec = (config.style == 3) ? { TimeA: "Done", TimeB: "Done", hide: "d-none" } : { TimeA: "-", TimeB: "-", TimeC: "-", hide: "d-none" };
+                        $.each(info.trip, function (tripIndex, trip) {
+                            if (tripIndex < 3) {
+                                if(config.timeDisplay == 'Schedule') {
+                                    var finalTime = (config.tripType == "Arrival") ? trip.STA : trip.SDT;
+                                } else {
+                                    var finalTime = (config.tripType == "Arrival") ? trip.ETA : trip.EDT;
+                                }
+
+                                if (trip.Time) {
+                                    if (config.style == 3) {
+                                        if (tripIndex == 0) {
+                                            timeSec.TimeA = (finalTime.DiffMin < config.threSoon) ? 'Soon' : finalTime.DiffMin + '<sub>m</sub>';
+                                        } else if (tripIndex == 1) {
+                                            timeSec.TimeB = (finalTime.DiffMin < config.threSoon) ? 'Soon' : finalTime.DiffMin + '<sub>m</sub>';
+                                        }
+                                        timeSec.hide = '';
+                                    }  else if (config.style == 4) {
+                                        if (tripIndex == 0) {
+                                            timeSec.TimeA = (finalTime.DiffMin < config.threSoon) ? '<span style="font-size: 1em !important" class="timeInMin">Soon</span>' : '<span class="timeInMin">' + finalTime.DiffMin + '</span><span class="mins">m</span>';
+                                        } else if (tripIndex == 1) {
+                                            timeSec.TimeB = finalTime.DiffMin;
+                                        }
+                                        timeSec.hide = '';
+                                    } else if (config.style == 5) {
+                                        if (tripIndex == 0) {
+                                            timeSec.TimeA = (finalTime.DiffMin < config.threSoon) ? '<span style="font-size: 0.8em !important" class="timeInMin">Soon</span>' : '<span class="timeInMin">' + finalTime.DiffMin + '</span><span class="mins">m</span>';
+                                        }
+                                        timeSec.hide = '';
+                                    } else {
+                                        if (tripIndex == 0) {
+                                            timeSec.TimeA = (finalTime.DiffMin < config.threSoon) ? 'Soon' : '<span class="timeInMin">' + finalTime.DiffMin + '</span><span class="mins">m</span>';
+                                        } else if (tripIndex == 1) {
+                                            timeSec.TimeB = finalTime.Time.replace(/ pm/gi, "p").replace(/ am/gi, "a");
+                                        } else if (tripIndex == 2) {
+                                            timeSec.TimeC = finalTime.Time.replace(/ pm/gi, "p").replace(/ am/gi, "a");
+                                        }
+                                        timeSec.hide = '';
+                                    }
+                                } else {
+                                    if (!jQuery.isEmptyObject(overwriteObj) && config.style != 3) {
+                                        timeSec.TimeA = overwriteObj.disTxt;
+                                        timeSec.TimeB = '-';
+                                        timeSec.TimeC = '-';
+                                        timeSec.hide = 'd-none';
+                                    }
+                                }
+                            }
+                        });
+
+                        appStyle = timeStyle();
+                        
+                        if ($.isNumeric(info.RouteId)) {
+                            info.RouteId = info.RouteId;
+                        } else {
+                            info.RouteId = ((info.RouteId).match(/^[0-9]+$/) != null) ? info.RouteId : (info.RouteId).split('-')[0];
+                        }
+
+                        if (info.DirectionCode != undefined) {
+                            var routeImgObj = routeImg['R' + info.RouteId + '_' + info.DirectionCode + '_L'];
+                            var statusString = '(Missing-RouteImg)->R' + info.RouteId + '_' + info.DirectionCode + '_L';
+                        } else {
+                            var routeImgObj = routeImg['R' + info.RouteId + '_L'];
+                            var statusString = '(Missing-RouteImg)->R' + info.RouteId + '_L';
+                        }
+
+                        var txtDisplay = ("{{_('To:')}}" == '~') ? '' : "{{_('To:')}} "; 
+                        $('.head').append(tim(appStyle, {
+                            width: (config.style == 5) ? (46) : '',
+                            padding: (config.style == 3 && config.routeNo.length == 1) ? 5 : '', 
+                            temp3_height: (config.style == 3) ? (config.routeNo.length > 1 ? (98 / config.routeNo.length) : 35) : '',
+                            height: (config.style == 4 && config.showBorder) ? (config.routeNo.length > 4 ? (100 / config.routeNo.length) - 1.5 : 23.2) : (config.style == 5) ? (config.routeNo.length > 4 ? (100 / config.routeNo.length) + 14 : 46.7) : (config.routeNo.length > 4 ? (100 / config.routeNo.length) - 0.5 : 24.3),
+                            wholeborder: (config.showBorder) ? (0.3) : '',
+                            margin: (config.style == 4 && config.showBorder) ? (1) : ((config.style == 5 && config.showBorder) ? (1.5) : ''),
+                            routeImg: (routeImgObj != undefined) ? routeImgObj : checkContains(statusString),
+                            RouteId: (overwriteObj.owRouteId) ? overwriteObj.owRouteId : info.RouteId,
+                            LongName: (overwriteObj.owLongName) ? (overwriteObj.owLongName) : info.LongName,
+                            TimeSec: timeSec,
+                            Des: (config.style != 4 && config.style != 5) ? ((overwriteObj.owDes) ? (overwriteObj.owDes) : (info.Des == null) ? '...' : '<b>'+ txtDisplay +'</b>' + supressSpecificChar(info.Des)) : ((overwriteObj.owDes) ? (overwriteObj.owDes) : (info.Des == null) ? '...' : supressSpecificChar(info.Des)),
+                            DesHide: (info.Des == null) ? '-' : '',
+                            Info: (info.trip[0].Time) ? '' : 'info',
+                        }));
+                        (config.style == 3) ? ($('.head').addClass('head-temp3')) : ($('.head').removeClass('head-temp3'));
+                        fontSizeUpdate(info.RouteId);
+                        (config.style == 5) ? ($('.head').addClass('box_properties')) : ($('.head').removeClass('box_properties'));
+                    });
+                } else {
+                    $('.fallback').removeClass('d-none');
+                }
+                if (config.style == 3) {
+                    $.each(emptyGroup, function (i, v) {
+                        $('.not_found').append('<span class="emty">' + v + '</span>');
+                    })
+                }                
+            } else {
+                $('.fallback').removeClass('d-none');
+            }
+        }
+
+        function timeStyle() {
+            if (config.style == 1) {
+                return 'app-temp-1';
+            } else if (config.style == 2) {
+                return 'app-temp-2';
+            } else if (config.style == 3) {
+                return 'app-temp-3';
+            } else if (config.style == 4) {
+                return 'app-temp-4';
+            } else if (config.style == 5) {
+                return 'app-temp-5';
+            }
+        }
+
+        function fontSizeUpdate(routeId) {
+            routeId = routeId.toString();
+            if (routeId.length == 3) {
+                $('.wrapper .digit').css({ 'font-size': '1em' });
+            }
+        }
+
+        function overwriteBy(routeId) {
+            var obj = []
+            if (config.dataFeed.length > 0) {
+                $.each(config.dataFeed, function (index, info) {
+                    if (info.routeId == routeId) {
+                        obj = info;
+                    }
+                });
+            }
+            
+            return obj;
+        }
+
+        function generateInfo2(data) {
+            debugger
+            var tripList = [];
+            debugger
+            if (data.stop) {
+                var routeDetail = data.stop.RouteDetail;
+                if (data.stop.RouteDetail.length > 0) {
+                    for (var a = 0; a < config.routeNo.length; a++) {
+                        for (var i = 0; i < routeDetail.length; i++) {
+                            if (routeDetail[i].RouteId == config.routeNo[a]) {
+                                var trip = routeDetail[i].Trip;
+                                debugger
+                                var obj = {
+                                    Color: routeDetail[i].Color,
+                                    Direction: null,
+                                    LongName: routeDetail[i].LName,
+                                    RouteId: routeDetail[i].RouteId,
+                                    ShortName: routeDetail[i].SName,
+                                    Des: null,
+                                    Direction: routeDetail[i].Direction,
+                                    DirectionCode: routeDetail[i].DirectionCode,
+                                    trip: []
+                                }
+                                if (trip.length > 0) {
+                                    for (var j = 0; j < trip.length; j++) {
+                                        tripObj = {
+                                            Time: true,
+                                            ETA: {
+                                                DiffMin: timeCalculation(timestampFormating(trip[j].ETA)).min,
+                                                Time: moment(timestampFormating(trip[j].ETA)).format('h:mm A'),
+                                            },
+                                            EDT: {
+                                                DiffMin: timeCalculation(timestampFormating(trip[j].EDT)).min,
+                                                Time: moment(timestampFormating(trip[j].EDT)).format('h:mm A'),
+                                            },
+                                            TripId: trip[j].TripID,
+                                        }
+
+                                        if (config.timeDisplay == 'Schedule') {
+                                            if (((config.tripType == "Arrival") ? tripObj.STA.DiffMin : tripObj.SDT.DiffMin) > -1) {
+                                                obj.trip.push(tripObj);
+                                            }
+                                        } else {
+                                            if (((config.tripType == "Arrival") ? tripObj.ETA.DiffMin : tripObj.EDT.DiffMin) > -1) {
+                                                obj.trip.push(tripObj);
+                                            }
+                                        }
+                                    }
+                                    (obj.trip.length != 0) ? tripList.push(obj) : '';
+                                } else {
+                                    var routeKey = obj.RouteId;
+                                    tripList[routeKey] = [];
+                                    tripList[routeKey] = obj;
+                                    tripList[routeKey].trip = [{
+                                        Time: false
+                                    }];
+                                }
+                            }
+                        }
+                    }
+                    
+                    var res = [];
+                    $.each(tripList, function (index, row) {
+                        if (row != undefined) {
+                            res.push(row);
+                        }
+                    });
+                    return res;
+                } else {
+                    return tripList;
+                }
+            } else {
+                return tripList;
+            }
+        }
+
+        function generateTripList(data, allRoutes) {
+            var tripList = {};
+            for (var a = 0; a < config.routeNo.length; a++) {
+                for (i = 0; i < data.RouteDirections.length; i++) {
+                    var routeDir = data.RouteDirections[i];
+
+                    if ((routeDir.RouteId + '_' + routeDir.DirectionCode) == config.routeNo[a]) {
+                        // console.log(routeDir.RouteId,config.routeNo[a])
+                        var routeInfo = generateRouteInfo(allRoutes, routeDir);
+
+                        if (!jQuery.isEmptyObject(routeDir.Departures)) {
+                            var tripInfo = [];
+                            var routeKey = routeDir.RouteId + '_' + routeDir.DirectionCode;
+                            tripList[routeKey] = [];
+
+                            tripList[routeKey] = routeInfo;
+                            tripList[routeKey].Des = supressLongNameAnd(supressToLongName(routeDir.Departures[0].Trip.InternetServiceDesc));
+                            tripList[routeKey].LongName = routeInfo.LongName;
+
+                            for (var j = 0; j < routeDir.Departures.length; j++) {
+                                trip = {
+                                    Time: true,
+                                    ETA: {
+                                        DiffMin: timeCalculation(timestampFormating(routeDir.Departures[j].ETA)).min,
+                                        Time: moment(timestampFormating(routeDir.Departures[j].ETA)).format('h:mm A'),
+                                    },
+                                    EDT: {
+                                        DiffMin: timeCalculation(timestampFormating(routeDir.Departures[j].EDT)).min,
+                                        Time: moment(timestampFormating(routeDir.Departures[j].EDT)).format('h:mm A'),
+                                    },
+                                    TripId: routeDir.Departures[j].Trip.TripId,
+                                }
+                                if (config.timeDisplay == 'Schedule') {
+                                    if (((config.tripType == "Arrival") ? trip.STA.DiffMin : trip.SDT.DiffMin) > -1) {
+                                        tripInfo.push(trip);
+                                    }
+                                } else {
+                                    if (((config.tripType == "Arrival") ? trip.ETA.DiffMin : trip.EDT.DiffMin) > -1) {
+                                        tripInfo.push(trip);
+                                    }
+                                }
+                            }
+                            if (tripInfo.length > 0) {
+                                tripList[routeKey]['trip'] = tripInfo;
+                            } else {
+                                delete tripList[routeKey];
+                            }
+                        } else {
+                            var routeKey = routeDir.RouteId + '_' + routeDir.DirectionCode;
+                            tripList[routeKey] = [];
+                            tripList[routeKey] = routeInfo;
+                            tripList[routeKey].trip = [{
+                                Time: false
+                            }];
+                        }
+                    } 
+                }
+                debugger
+                if (tripList[config.routeNo[a]] == undefined) {
+                    var routeKey = config.routeNo[a];
+                    tripList[routeKey] = [];
+                    tripList[routeKey] = generateRouteInfoOnly(allRoutes, config.routeNo[a]);
+                    if (tripList[routeKey] != undefined) {
+                        tripList[routeKey].trip = [{
+                            Time: false
+                        }];
+                    }
+                }
+            }
+
+            var res = [];
+            $.each(tripList, function (index, row) {
+                res.push(row);
+            });
+
+            if (res.length > 0) {
+                return sortRoutes(res);
+            } else {
+                return [];
+            }
+        }
+
+        function generateRouteInfoOnly(allRoutes, routeId) {
+            for (var k = 0; k < allRoutes.length; k++) {
+                if (allRoutes[k].RouteId == routeId.split('_')[0]) {
+                    debugger
+                    var routeInfo = {
+                        RouteId: routeId.split('_')[0],
+                        ShortName: allRoutes[k].ShortName,
+                        LongName: (config.SupressShortName) ? supressShortName(allRoutes[k].LongName) : allRoutes[k].LongName,
+                        Color: allRoutes[k].Color,
+                        TextColor: allRoutes[k].TextColor,
+                        Direction: null,
+                        DirectionCode: routeId.split('_')[1],
+                        IsDone: null,
+                        Des: null
+                    }
+                }
+            }
+            return routeInfo;
+        }
+        
+        function generateRouteInfo(allRoutes, routeDir) {
+            for (var k = 0; k < allRoutes.length; k++) {
+                if (allRoutes[k].RouteId == routeDir.RouteId) {
+                    var routeInfo = {
+                        RouteId: routeDir.RouteId,
+                        ShortName: allRoutes[k].ShortName,
+                        LongName: (config.SupressShortName) ? supressShortName(allRoutes[k].LongName) : allRoutes[k].LongName,
+                        Color: allRoutes[k].Color,
+                        TextColor: allRoutes[k].TextColor,
+                        Direction: routeDir.Direction,
+                        DirectionCode: routeDir.DirectionCode,
+                        IsDone: routeDir.IsDone,
+                        Des: null
+                    }
+                }
+            }
+            return routeInfo;
+        }
+
+        function checkContains(str) {
+            if (emptyGroup.indexOf(str) == -1) {
+                emptyGroup.push(str);
+            }
+            return 'null';
+        }
+
+        // Time Calculation
+        function timeCalculation(eta) {
+            var today = new Date();
+
+            if (moment(eta).format('YYYY') === moment().format('YYYY')) {
+                var durEDT = moment.duration(moment(eta).diff(moment()));
+                var asMinEDT = Math.round(durEDT.asMinutes());
+                var asSecEDT = Math.round(durEDT.asSeconds());
+                return {
+                    sec: Math.round(asSecEDT),
+                    min: Math.round(asMinEDT)
+                };
+            } else {
+                return {
+                    sec: -1,
+                    min: -1
+                };
+            }
+        }
+
+        function timestampFormating(time) {
+            // Get the number parts
+            var b = time.match(/\d+/g);
+
+            return parseInt(b[0]);
+        }
+
+        function timeFormatFromTimeStamp(time) {
+            try {
+                var date = new Date(time);
+                var hour = date.getHours();
+                var min = date.getMinutes();
+
+                if (hour == 12) {
+                    sufix = 'p';
+                } else if (hour > 12) {
+                    hour = hour - 12;
+                    sufix = 'p';
+                } else {
+                    sufix = 'a';
+                }
+
+                if (hour < 10) {
+                    hour = '0' + hour;
+                }
+
+                if (min < 10) {
+                    min = '0' + min;
+                }
+
+                return hour + ':' + min + sufix;
+            } catch (e) {
+                //console.log("Time data in wrong format")
+                return '';
+            }
+        };
+
+        function lastUpdateTime(time) {
+            var lastTime = timeFormatFromTimeStamp(timestampFormating(time));
+
+            var today = new Date(timestampFormating(time));
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+            var yyyy = today.getFullYear();
+
+            today = mm + '/' + dd + ' @ ' + lastTime;
+            return today;
+        }
+
+        function supressShortName(longName) {
+            var output = longName.substring(longName.indexOf("-") + 1);
+            return output;
+        }
+
+        function supressSpecificChar(des) {
+            if (config.style == 5 || config.style == 4) {
+                var output = (des.length > config.desMaxCharcters) ? (des.substring(0, config.desMaxCharcters) + "...") : (des.replace("{{_('supressCharDestination ')}}", ""));
+                return output;
+            } else {
+                var output = des.replace("{{_('supressCharDestination ')}}", "");
+                return output;
+            }
+        }
+
+        function supressToLongName(longName) {
+            var output = longName.replace("To ", "");
+            return output;
+        }
+
+        function supressLongNameAnd(longName) {
+            var output = longName.replace("and", "&");
+            return output;
+        }
+
+        function timeCalculationInHr(eta) {
+            var date1 = new Date();
+            date2 = new Date(eta);
+
+            var res = Math.abs(date1 - date2) / 1000;
+
+            // get total days between two dates
+            var days = Math.floor(res / 86400);
+
+            // get hours        
+            var hours = Math.floor(res / 3600) % 24;
+
+            // get minutes
+            var minutes = Math.floor(res / 60) % 60;
+
+            // get seconds
+            var seconds = res % 60;
+
+            return hours + 'h ' + minutes + 'min';
+        }
+
+        function getRouteInfo(url) {
+            if (url.url) {
+                $.get(url, function (data, status) {
+                    if (data.length > 0) {
+                        setDataToStorage(localStr.routeStor, data);
+                    }
+                }).fail(function (status) {
+                    setTimeout(getRouteInfo({ url: config.routeApi.replace(/&amp;/g, '&') }), 1000);
+                });
+            }
+        }
+
+        function getScheduleInfo(url) {
+            if (url.url) {
+                $.get(url, function (data, status) {
+                    if (config.apiStruc == '1') {
+                        if (data.length > 0) {
+                            setDataToStorage(localStr.stopDepStor, data[0]);
+                        }
+                    } else {
+                        if (data) {
+                            setDataToStorage(localStr.stopDepStor, data);
+                        }
+                    }
+                }).fail(function (status) {
+                    setTimeout(getScheduleInfo({ url: config.stopDepApi.replace(/&amp;/g, '&') }), 1000);
+                });
+            }
+        }
+
+        function timestampFormating(time) {
+            // Get the number parts
+            var b = time.match(/\d+/g);
+
+            return parseInt(b[0]);
+        }
+
+        function getDataFromStorage(name) {
+            var date = new Date();
+            try {
+                var object = JSON.parse(localStorage.getItem(name));
+                if (!object) {
+                    console.log(1, 'There is no cached data available', { errorType: 'Warning' });
+                    return false;
+                } else {
+                    return object;
+                }
+            } catch (e) {
+                console.log(1, 'Unable to use cached data, %(value)s', { value: e, errorType: 'Warning' });
+                localStorage.removeItem(name);
+            }
+            return false;
+        };
+
+        function setDataToStorage(name, object) {
+            try {
+                if (config.apiStruc == 1) {
+                    if (object.hasOwnProperty("RouteDirections")) {
+                        object.expire_time = moment();
+                    }
+                } else {
+                    if (object.hasOwnProperty("stop")) {
+                        object.expire_time = moment();
+                    }
+                }
+
+                localStorage.setItem(name, JSON.stringify(object));
+                return true;
+            } catch (e) {
+                console.log(1, 'Unable to set cached data, %(value)s', { value: e, errorType: 'Warning' });
+                localStorage.removeItem(name);
+            }
+            return false;
+        };
+
+        function sortRoutes(routes) {
+            if (Object.keys(routes).length > 0) {
+                var ob = [];
+                $.each(routes, function (index, row) {
+                    if (row != undefined) {
+                        ob.push(row);
+                    }
+                });
+                
+                if (config.sortRoute == "RouteId") {
+                    ob.sort((function (a, b) {
+                        return a.RouteId - b.RouteId;
+                    }));
+                } else if (config.sortRoute == "Time") {
+                    ob.sort((function (a, b) {
+                        var timeA = ((a.trip[0].Time) ? a.trip[0].ETA.DiffMin : 10000000);
+                        var timeB = ((b.trip[0].Time) ? b.trip[0].ETA.DiffMin : 10000000);
+
+                        return timeA - timeB;
+                    }));
+                }
+                return ob;
+            } else {
+                return routes;
+            }
+        }
+
+        function uiFont() {
+            function appendStyle(styles) {
+                var css = document.createElement('style');
+                css.type = 'text/css';
+
+                if (css.styleSheet) css.styleSheet.cssText = styles;
+                else css.appendChild(document.createTextNode(styles));
+
+                document.getElementsByTagName("head")[0].appendChild(css);
+            }
+
+            var array = [
+                (config.fontWeight[0] != undefined) ? font[config.fontWeight[0].trim()] : '',
+                (config.fontWeight[1] != undefined) ? font[config.fontWeight[1].trim()] : '',
+                (config.fontWeight[2] != undefined) ? font[config.fontWeight[2].trim()] : '',
+                (config.fontWeight[3] != undefined) ? font[config.fontWeight[3].trim()] : '',
+                (config.fontWeight[4] != undefined) ? font[config.fontWeight[4].trim()] : '',
+            ]
+
+            var styles = '.wrapper .digit span { font-weight: ' + array[0] + ' }';
+            styles += ' .wrapper .name span:nth-child(1) { font-weight: ' + array[1] + ' }';
+            styles += ' .wrapper .name span:nth-child(2) { font-weight: ' + array[2] + ' }';
+            styles += ' .wrapper .timeA { font-weight: ' + array[3] + ' }';
+            styles += ' .internalTime { font-weight: ' + array[4] + ' }';
+
+            window.onload = function () { appendStyle(styles) };
+        }
+
+        function handleData(data) {
+            (data.source.length === 0) ? showNoDataMessage(data) : showRenderedData(data);
+        }
+
+        function showNoDataMessage(data) {
+            // If the data feed is empty we can play over here
+            data.update.then(handleData);
+        }
+
+        function showRenderedData(data) {
+            for (var i = 0; i < data.source.length; i++) {
+                config.dataFeed.push({
+                    index: i,
+                    routeId: checkUndefined(data.source[i].Route_Id),
+                    disTxt: checkUndefined(data.source[i].Txt_Display),
+                    owRouteId: checkUndefined(data.source[i].Overwrite_Route_Id),
+                    owShortName: checkUndefined(data.source[i].Overwrite_ShortName),
+                    owLongName: checkUndefined(data.source[i].Overwrite_LongName),
+                    owDes: checkUndefined(data.source[i].Overwrite_Destination),
+                    owRouteClr: checkUndefined(data.source[i].Overwrite_Route_Color),
+                    owRouteTxtClr: checkUndefined(data.source[i].Overwrite_Route_Txt_Color)
+                });
+            }
+            data.update.then(handleData);
+        }
+
+        function checkUndefined(str) {
+            return (str != undefined) ? str : '';
+        }
+
+        function getAllUrlParams(url) {
+
+            // get query string from url (optional) or window
+            var queryString = url ? url.split('?')[1] : window.location.search.slice(1);
+
+            // we'll store the parameters here
+            var obj = {};
+
+            // if query string exists
+            if (queryString) {
+
+                // stuff after # is not part of query string, so get rid of it
+                queryString = queryString.split('#')[0];
+
+                // split our query string into its component parts
+                var arr = queryString.split('&');
+
+                for (var i = 0; i < arr.length; i++) {
+                    // separate the keys and the values
+                    var a = arr[i].split('=');
+
+                    // set parameter name and value (use 'true' if empty)
+                    var paramName = a[0];
+                    var paramValue = typeof (a[1]) === 'undefined' ? true : a[1];
+
+                    // (optional) keep case consistent
+                    paramName = paramName.toLowerCase();
+                    if (typeof paramValue === 'string') paramValue = paramValue.toLowerCase();
+
+                    // if the paramName ends with square brackets, e.g. colors[] or colors[2]
+                    if (paramName.match(/\[(\d+)?\]$/)) {
+
+                        // create key if it doesn't exist
+                        var key = paramName.replace(/\[(\d+)?\]/, '');
+                        if (!obj[key]) obj[key] = [];
+
+                        // if it's an indexed array e.g. colors[2]
+                        if (paramName.match(/\[\d+\]$/)) {
+                            // get the index value and add the entry at the appropriate position
+                            var index = /\[(\d+)\]/.exec(paramName)[1];
+                            obj[key][index] = paramValue;
+                        } else {
+                            // otherwise add the value to the end of the array
+                            obj[key].push(paramValue);
+                        }
+                    } else {
+                        // we're dealing with a string
+                        if (!obj[paramName]) {
+                            // if it doesn't exist, create property
+                            obj[paramName] = paramValue;
+                        } else if (obj[paramName] && typeof obj[paramName] === 'string') {
+                            // if property does exist and it's a string, convert it to an array
+                            obj[paramName] = [obj[paramName]];
+                            obj[paramName].push(paramValue);
+                        } else {
+                            // otherwise add the property
+                            obj[paramName].push(paramValue);
+                        }
+                    }
+                }
+            }
+
+            return obj;
+        }
+
+        $(window).on('load', function () {
+            var w = $(window).width();
+            var h = $(window).height();
+            let wsize;
+            let hsize;
+            if (config.routeNo.length > 4) {
+                wsize = w * 0.045;
+                hsize = h * 0.045;
+            } else {
+                wsize = w * 0.06;
+                hsize = h * 0.06;
+            }
+            $("body").css("font-size", wsize + "%");
+            $("body").css("font-size", hsize + "%");
+        });
+
+        $(window).resize(function () {
+            var w = $(window).width();
+            var h = $(window).height();
+            let wsize;
+            let hsize;
+            if (config.routeNo.length > 4) {
+                wsize = w * 0.045;
+                hsize = h * 0.045;
+            } else {
+                wsize = w * 0.06;
+                hsize = h * 0.06;
+            }
+            $("body").css("font-size", wsize + "%");
+            $("body").css("font-size", hsize + "%");
+            window.location.reload();
+        });
+
+        window.addEventListener("DOMContentLoaded", function (event) {
+            if (window.OverwriteInfo != undefined) {
+                window.OverwriteInfo.then(handleData);
+            }
+            uiFont();
+            routeData();
+
+            getScheduleInfo({ url: config.stopDepApi.replace(/&amp;/g, '&') });
+            getRouteInfo({ url: config.routeApi.replace(/&amp;/g, '&') });
+
+            setInterval(function () {
+                try {
+                    getScheduleInfo({ url: config.stopDepApi.replace(/&amp;/g, '&') });
+                } catch (e) { }
+            }, config.stopRefresh * 60000);
+
+            setInterval(function () {
+                try {
+                    getRouteInfo({ url: config.routeApi.replace(/&amp;/g, '&') });
+                } catch (e) { }
+            }, config.routeRefresh * 36000 * 1000);
+
+            setInterval(function () { routeData(); }, config.dataRefresh * 1000 );
+        });
+
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                $(".loader").fadeOut("slow");
+            }, 1000);
+        });
+    </script>
+
+</body>
+
+</html>

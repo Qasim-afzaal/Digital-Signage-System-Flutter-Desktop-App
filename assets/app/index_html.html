@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Web Page</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fafafa;
+            color: #333;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+        }
+
+        /* Main Content Area */
+        .container {
+            width: 80%;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .container h2 {
+            font-size: 2em;
+            color: #34495e;
+        }
+
+        /* Button Styles */
+        .button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Responsive Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .grid-item {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .grid-item:hover {
+            transform: translateY(-10px);
+        }
+
+        /* Form Styles */
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 400px;
+            margin: 30px auto;
+        }
+
+        .form-container label {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .form-container input,
+        .form-container textarea {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .form-container button {
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .form-container button:hover {
+            background-color: #c0392b;
+        }
+
+        /* Footer Styles */
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <h1>Welcome to My Interactive Web Page</h1>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <h2>Interactive Grid</h2>
+        <p>Click on any of the items below to see more details.</p>
+
+        <!-- Grid Section -->
+        <div class="grid-container">
+            <div class="grid-item" onclick="showAlert('Item 1')">
+                <h3>Item 1</h3>
+                <p>Description of Item 1</p>
+            </div>
+            <div class="grid-item" onclick="showAlert('Item 2')">
+                <h3>Item 2</h3>
+                <p>Description of Item 2</p>
+            </div>
+            <div class="grid-item" onclick="showAlert('Item 3')">
+                <h3>Item 3</h3>
+                <p>Description of Item 3</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="form-container">
+        <h2>Contact Us</h2>
+        <label for="name">Your Name:</label>
+        <input type="text" id="name" placeholder="Enter your name" required>
+
+        <label for="message">Your Message:</label>
+        <textarea id="message" rows="4" placeholder="Enter your message here"></textarea>
+
+        <button onclick="submitForm()">Submit</button>
+    </div>
+
+    <!-- Footer Section -->
+    <footer>
+        <p>&copy; 2025 My Interactive Web Page. All Rights Reserved.</p>
+    </footer>
+
+    <!-- JavaScript Section -->
+    <script>
+        // Function to show an alert when a grid item is clicked
+        function showAlert(item) {
+            alert("You clicked on " + item);
+        }
+
+        // Function to handle form submission
+        function submitForm() {
+            const name = document.getElementById('name').value;
+            const message = document.getElementById('message').value;
+
+            if (name && message) {
+                alert('Form submitted successfully!\n' + 'Name: ' + name + '\nMessage: ' + message);
+            } else {
+                alert('Please fill in all fields!');
+            }
+        }
+    </script>
+
+</body>
+</html>
