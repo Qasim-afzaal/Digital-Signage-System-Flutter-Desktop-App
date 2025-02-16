@@ -8,7 +8,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
-import 'package:digital_signage/models/compaign_model.dart';
+import 'package:digital_signage/models/multimedia_model.dart';
 import 'package:digital_signage/view_models/mqtt_view_model.dart';
 
 
