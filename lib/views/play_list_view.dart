@@ -8,17 +8,17 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
-import 'package:digital_signage/models/play_list_model.dart';
+import 'package:digital_signage/models/player_model.dart';
 import 'package:digital_signage/view_models/mqtt_view_model.dart';
 
-class PlaylistScreen extends StatefulWidget {
-  const PlaylistScreen({super.key});
+class PlaylisMediatScreen extends StatefulWidget {
+  const PlaylisMediatScreen({super.key});
 
   @override
-  State<PlaylistScreen> createState() => _PlaylistScreenState();
+  State<PlaylisMediatScreen> createState() => _PlaylisMediatScreenState();
 }
 
-class _PlaylistScreenState extends State<PlaylistScreen> {
+class _PlaylisMediatScreenState extends State<PlaylisMediatScreen> {
   late FocusNode _focusNode; // Declare FocusNode
 
   @override
@@ -43,7 +43,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     final mqttViewModel = Provider.of<MqttViewModel>(context);
 
     final currentPlaylist =
-        mqttViewModel.playListModel!.data.playlist[mqttViewModel.currentIndex];
+        mqttViewModel.playerMediaModel!.data.playlist[mqttViewModel.currentIndex];
     final playlistSchedule = currentPlaylist.playlistSchedule;
 
     if (playlistSchedule!.alwaysPlay) {

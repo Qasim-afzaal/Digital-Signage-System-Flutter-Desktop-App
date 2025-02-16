@@ -1,49 +1,45 @@
 import 'package:flutter/material.dart';
 
-import 'package:digital_signage/widgets/center_image_widget.dart';
-import 'package:digital_signage/widgets/text_widget.dart';
-
-class NoInternetView extends StatefulWidget {
-  const NoInternetView({super.key});
+class ConnectionErrorView extends StatefulWidget {
+  const ConnectionErrorView({super.key});
 
   @override
-  State<NoInternetView> createState() => _NoInternetViewState();
+  State<ConnectionErrorView> createState() => _ConnectionErrorViewState();
 }
 
-class _NoInternetViewState extends State<NoInternetView> {
+class _ConnectionErrorViewState extends State<ConnectionErrorView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background image
-          Image.asset(
-            "assets/images/background.png",
-            fit: BoxFit.cover, // Ensures the image covers the entire screen
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
-          ),
-          // Positioned text on top of the background
-          const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CustomImageWidget(
-                  imagePath: 'assets/images/Browser.png',
-                ),
-                SimpleText(
-                  text: "No Internet",
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-                SimpleText(
-                  text:
-                      "Wifi is still trying to connect, but it’s taking longer than normal.\nCheck that your Wifi is on and connected.",
-                )
-              ],
+      body: Container(
+        color: Colors.black87,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(20.0),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.signal_wifi_off, size: 100, color: Colors.redAccent),
+            SizedBox(height: 20),
+            Text(
+              "Network Unavailable",
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            SizedBox(height: 10),
+            Text(
+              "We are unable to connect to the internet.\nPlease check your WiFi settings or try again later.",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
