@@ -59,7 +59,7 @@ The project relies on several Flutter and Dart packages:
 
 1. Clone the repository:
    ```sh
-   git clone https://github.com/your-repo/digital-signage-system.git
+   git clone url
    cd digital-signage-system
    ```
 2. Install dependencies:
