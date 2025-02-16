@@ -42,7 +42,7 @@ class _MultiMediaViewState extends State<MultiMediaView> {
   @override
   Widget build(BuildContext context) {
     final mqttViewModel = Provider.of<MqttViewModel>(context);
-    final campaignModel = mqttViewModel.campaignModel;
+    final campaignModel = mqttViewModel.multiMediaModel;
 
     if (campaignModel?.data.playerCampaigns.isEmpty ?? true) {
       return const Scaffold(
