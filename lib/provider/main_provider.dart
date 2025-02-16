@@ -6,11 +6,11 @@ import 'package:provider/provider.dart';
 import '../services/mqtt_client_service.dart';
 import '../view_models/mqtt_view_model.dart';
 import '../view_models/system_apply_settings_vm.dart';
-import '../views/campaign_view.dart';
-import '../views/connecting_view.dart';
-import '../views/digivision_view.dart';
+import '../views/multi_media_screen.dart';
+import '../views/connection_screen.dart';
+import '../views/main_view.dart';
 import '../views/downloading_screen.dart';
-import '../views/no_content_view.dart';
+import '../views/no_media_screen.dart';
 import '../views/no_internet_view.dart';
 import '../views/play_list_view.dart';
 
@@ -24,7 +24,7 @@ class MqttProvider extends StatefulWidget {
 }
 
 class _MqttProviderState extends State<MqttProvider> {
-  Offset? _lastOffset;
+
   late FocusNode _focusNode;
 
   @override
@@ -32,17 +32,17 @@ class _MqttProviderState extends State<MqttProvider> {
     super.initState();
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus(); // Request focus once the widget is built
+      _focusNode.requestFocus(); 
     });
   }
 
   @override
   void dispose() {
-    _focusNode.dispose(); // Clean up FocusNode on dispose
+    _focusNode.dispose(); 
     super.dispose();
   }
 
-  // Callback for touch position
+
   void _onTap(TapUpDetails details) {
     final position = details.localPosition;
     print("Touched at position: $position");
@@ -74,35 +74,33 @@ class _MqttProviderState extends State<MqttProvider> {
     );
   }
 
-  // Handle keyboard events
+
   void _onKey(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
       print("Key pressed: ${event.logicalKey.debugName}");
-      // Access viewModel to handle key events
-      // final viewModel = Provider.of<MqttViewModel>(context, listen: false);
-      // viewModel.getkey(event.logicalKey.debugName!);
+      
     }
   }
 
-  // Return appropriate screen based on MQTT state
+
   Widget _getScreenForState(MqttState state) {
     switch (state) {
       case MqttState.initial:
-        return const ConnectingView();
+        return const ConnectingScreen();
       case MqttState.noContent:
-        return const NoContentView();
+        return const NoMediaAvailableView();
       case MqttState.connectionScreen:
-        return const ConnectingView();
+        return const ConnectingScreen();
       case MqttState.downloading:
-        return const DownloadingView();
+        return const DownloadingScreen();
       case MqttState.noInternet:
-        return const NoInternetView();
+        return const ConnectionErrorView();
       case MqttState.campaignScreen:
-        return const CampaignView();
+        return const MultiMediaView();
       case MqttState.pairedScreen:
-        return const DigivisionView();
+        return const MainView();
       case MqttState.playlistScreen:
-        return const PlaylistScreen();
+        return const PlaylisMediatScreen();
       default:
         return const Scaffold(
           body: Center(child: Text('Unknown State')),
