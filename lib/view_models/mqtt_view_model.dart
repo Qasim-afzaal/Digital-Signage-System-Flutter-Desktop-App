@@ -20,15 +20,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:digital_signage/models/compaign_model.dart';
+import 'package:digital_signage/models/multimedia_model.dart';
 import 'package:digital_signage/models/intractivity_model.dart';
-import 'package:digital_signage/models/play_list_model.dart';
+import 'package:digital_signage/models/player_model.dart';
 import 'package:digital_signage/utils/globle_variable.dart';
 import 'package:digital_signage/view_models/system_apply_settings_vm.dart';
 
 import '../data/api_repository/api_repository.dart';
 import '../services/mqtt_client_service.dart';
-import '../utils/constants.dart';
+
 
 enum MqttState {
   initial,
@@ -61,13 +61,13 @@ class MqttViewModel extends ChangeNotifier {
   String _topic = "";
   String get topic => _topic;
 
-  PlayListModel? _playListModel;
+  PlayerMediaModel? _playerMediaModel;
 
-  PlayListModel? get playListModel => _playListModel;
+  PlayerMediaModel? get playerMediaModel => _playerMediaModel;
 
-  CampaignModel? _campaignModel;
+  MultiMediaModel? _multiMediaModel;
 
-  CampaignModel? get campaignModel => _campaignModel;
+  MultiMediaModel? get multiMediaModel => _multiMediaModel;
 
   InteractivityModel? _interactivityModel;
 
@@ -225,9 +225,9 @@ class MqttViewModel extends ChangeNotifier {
 
           subsibeMessage(_topic);
           publishMessage(globleTopic, jsonEncode(deviceInfoMap));
-          _playListModel = playListModelFromJson(jsonEncode(storedJsonObj));
+          _playerMediaModel = playListModelFromJson(jsonEncode(storedJsonObj));
 
-          for (var playlist in _playListModel!.data.playlist) {
+          for (var playlist in _playerMediaModel!.data.playlist) {
             // Check if the playlist contains any media
             if (playlist.media != null && playlist.media!.isNotEmpty) {
               for (var media in playlist.media!) {
@@ -244,10 +244,10 @@ class MqttViewModel extends ChangeNotifier {
           subsibeMessage(_topic);
 
           publishMessage(globleTopic, jsonEncode(deviceInfoMap));
-          _campaignModel = campaignModelFromJson(jsonEncode(storedJsonObj));
+          _multiMediaModel = campaignModelFromJson(jsonEncode(storedJsonObj));
 
           print(_mediaList);
-          for (var campaign in _campaignModel!.data.playerCampaigns) {
+          for (var campaign in _multiMediaModel!.data.playerCampaigns) {
             for (var zone in campaign.zones) {
               for (var media in zone.mediaItems) {
                 print("Media URL: ${media.mediaUrl}");
@@ -261,9 +261,9 @@ class MqttViewModel extends ChangeNotifier {
         }
       } else {
         if (storedJsonObj["action"] == "publish_playlist") {
-          _playListModel = playListModelFromJson(jsonEncode(storedJsonObj));
+          _playerMediaModel = playListModelFromJson(jsonEncode(storedJsonObj));
           print(_mediaList);
-          for (var playlist in _playListModel!.data.playlist) {
+          for (var playlist in _playerMediaModel!.data.playlist) {
             // Check if the playlist contains any media
             if (playlist.media != null && playlist.media!.isNotEmpty) {
               for (var media in playlist.media!) {
@@ -275,9 +275,9 @@ class MqttViewModel extends ChangeNotifier {
             }
           }
         } else if (storedJsonObj["action"] == "publish_campaign") {
-          _campaignModel = campaignModelFromJson(jsonEncode(storedJsonObj));
+          _multiMediaModel = campaignModelFromJson(jsonEncode(storedJsonObj));
 
-          for (var campaign in _campaignModel!.data.playerCampaigns) {
+          for (var campaign in _multiMediaModel!.data.playerCampaigns) {
             for (var zone in campaign.zones) {
               for (var media in zone.mediaItems) {
                 print("Media URL: ${media.mediaUrl}");
@@ -921,7 +921,7 @@ EOF
       return;
     }
 
-    _downloadCount = _playListModel!.data.playlist.fold(
+    _downloadCount = _playerMediaModel!.data.playlist.fold(
       0,
       (count, playlist) => count + (playlist.media?.length ?? 0),
     );
@@ -948,7 +948,7 @@ EOF
     int completedDownloads = 0;
     _overallProgress = 0.0;
 
-    for (var playlist in _playListModel!.data.playlist) {
+    for (var playlist in _playerMediaModel!.data.playlist) {
       _mediaPath[playlist.id] = [];
 
       for (var media in playlist.media!) {
@@ -1007,8 +1007,8 @@ EOF
   }
 
   void _updateMediaModelForPlaylist() {
-    if (_playListModel != null) {
-      for (var playlist in _playListModel!.data.playlist) {
+    if (_playerMediaModel != null) {
+      for (var playlist in _playerMediaModel!.data.playlist) {
         if (_mediaPath.containsKey(playlist.id)) {
           List<String> playlistMediaPaths = _mediaPath[playlist.id]!;
           for (int i = 0; i < playlist.media!.length; i++) {
@@ -1023,7 +1023,7 @@ EOF
           }
         }
       }
-      _playListModel!.data.playlist.forEach((playlist) {
+      _playerMediaModel!.data.playlist.forEach((playlist) {
         playlist.media!.forEach((media) {
           print("Updated Media URL: ${media.mediaUrl}");
         });
@@ -1097,7 +1097,7 @@ EOF
     _mqttClientService.publish(topic, jsonEncode(sendLog));
 
     // Calculate the total number of files to download from all zones
-    _downloadCount = _campaignModel!.data.playerCampaigns
+    _downloadCount = _multiMediaModel!.data.playerCampaigns
         .expand((campaign) => campaign.zones)
         .expand((zone) => zone.mediaItems)
         .length;
@@ -1116,7 +1116,7 @@ EOF
     int completedDownloads = 0;
     _overallProgress = 0.0;
 
-    for (var campaign in _campaignModel!.data.playerCampaigns) {
+    for (var campaign in _multiMediaModel!.data.playerCampaigns) {
       for (var zone in campaign.zones) {
         String uniqueKey =
             '${campaign.campaignId}_${zone.id}'; // Unique key based on campaign_id and zone.id
@@ -1186,8 +1186,8 @@ EOF
   }
 
   void _updateMediaModelForCampaign() {
-    if (_campaignModel != null) {
-      for (var campaign in _campaignModel!.data.playerCampaigns) {
+    if (_multiMediaModel != null) {
+      for (var campaign in _multiMediaModel!.data.playerCampaigns) {
         for (var zone in campaign.zones) {
           String uniqueKey = '${campaign.campaignId}_${zone.id}'; // Unique key
           if (_mediaPaths.containsKey(uniqueKey)) {
@@ -1615,8 +1615,8 @@ EOF
       _mqttClientService.publish(topic, jsonEncode(sendLog));
 // Deserialize the JSON into the model
       // await _checkPairingStatus();
-      _playListModel = playListModelFromJson(jsonEncode(jsonObj));
-      // if (_playListModel!.data.playlist.isEmpty) {
+      _playerMediaModel = playListModelFromJson(jsonEncode(jsonObj));
+      // if (_playerMediaModel!.data.playlist.isEmpty) {
       //   debugPrint("remove playlist and update screen");
       //   Map<String, dynamic> sendLog = {
       //     "action": "player_logs",
@@ -1631,9 +1631,9 @@ EOF
       //   prefs.clear();
       //   await _checkPairingStatus();
       // }
-      print("model data ${_playListModel!.data.playlist}");
+      print("model data ${_playerMediaModel!.data.playlist}");
 
-      for (var playlist in _playListModel!.data.playlist) {
+      for (var playlist in _playerMediaModel!.data.playlist) {
         // Check if the playlist contains any media
         if (playlist.media != null && playlist.media!.isNotEmpty) {
           for (var media in playlist.media!) {
@@ -1655,10 +1655,10 @@ EOF
 
       _mqttClientService.publish(topic, jsonEncode(sendLog));
       _msg = jsonObj["action"];
-      _campaignModel = campaignModelFromJson(jsonEncode(jsonObj));
+      _multiMediaModel = campaignModelFromJson(jsonEncode(jsonObj));
       print(
-          "checking media on model ${_campaignModel!.data.playerCampaigns[0].zones[0].mediaItems[0].mediaUrl}");
-      // if (_campaignModel!.data.playerCampaigns.isEmpty) {
+          "checking media on model ${_multiMediaModel!.data.playerCampaigns[0].zones[0].mediaItems[0].mediaUrl}");
+      // if (_multiMediaModel!.data.playerCampaigns.isEmpty) {
       //   debugPrint("remove playlist and update screen");
       //   Map<String, dynamic> sendLog = {
       //     "action": "player_logs",
@@ -1677,7 +1677,7 @@ EOF
       print("i am in ccccccc");
 
       // await _checkPairingStatus();
-      for (var campaign in _campaignModel!.data.playerCampaigns) {
+      for (var campaign in _multiMediaModel!.data.playerCampaigns) {
         for (var zone in campaign.zones) {
           for (var media in zone.mediaItems) {
             print("Media URL: ${media.mediaUrl}");
@@ -1743,7 +1743,7 @@ EOF
 
   int get currentDurationOfCampaign {
     final currentCampaign =
-        campaignModel!.data.playerCampaigns[_currentIndexOfCapmaign];
+        multiMediaModel!.data.playerCampaigns[_currentIndexOfCapmaign];
     final campaignSchedule = currentCampaign.campaignSchedule;
 
     int durationcampagin = 0;
@@ -1809,12 +1809,12 @@ EOF
 
   void _updateIndexForCampain() {
     _currentIndexOfCapmaign = (_currentIndexOfCapmaign + 1) %
-        campaignModel!.data.playerCampaigns.length;
+        multiMediaModel!.data.playerCampaigns.length;
     Map<String, dynamic> sendLog = {
       "action": "player_logs",
       "log": "Current Campaign",
       "name":
-          _campaignModel?.data.playerCampaigns[_currentIndex].campaignName ??
+          _multiMediaModel?.data.playerCampaigns[_currentIndex].campaignName ??
               "",
       "type": "info",
       "date_time": DateTime.now().toIso8601String(),
@@ -1886,7 +1886,7 @@ EOF
   int get currentIndex => _currentIndex;
 
   int get currentDuration {
-    final currentPlaylist = playListModel!.data.playlist[_currentIndex];
+    final currentPlaylist = playerMediaModel!.data.playlist[_currentIndex];
     final playlistSchedule = currentPlaylist.playlistSchedule;
 
     int duration = 2;
@@ -1929,14 +1929,14 @@ EOF
   }
 
   void _updateIndex() {
-    _currentIndex = (_currentIndex + 1) % playListModel!.data.playlist.length;
+    _currentIndex = (_currentIndex + 1) % playerMediaModel!.data.playlist.length;
     print(
-        "current playlist ${_playListModel!.data.playlist[_currentIndex].name} ");
+        "current playlist ${_playerMediaModel!.data.playlist[_currentIndex].name} ");
 
     Map<String, dynamic> sendLog = {
       "action": "player_logs",
       "log": "Current Playlist",
-      "name": "${_playListModel!.data.playlist[_currentIndex].name}",
+      "name": "${_playerMediaModel!.data.playlist[_currentIndex].name}",
       "type": "info",
       "date_time": DateTime.now().toIso8601String(),
     };
