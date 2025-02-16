@@ -68,7 +68,7 @@ The **Digital Signage System** is a powerful solution for remote content managem
 
 ### 1️⃣ Clone the Repository:
 ```sh
-git clone https://github.com/your-repo/digital-signage-system.git
+git clone https://github.com/your-repo/digital-signage-system.git](https://github.com/Qasim-afzaal/Media-Player-For-Desktop)
 cd digital-signage-system
 ```
 
